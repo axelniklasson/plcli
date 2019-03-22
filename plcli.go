@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"plcli/lib/commands"
+	"plcli/lib/util"
 
 	"github.com/urfave/cli"
 )
@@ -14,6 +15,7 @@ func main() {
 	app.Usage = "CLI for PlanetLab"
 	app.Version = "0.1"
 	app.Author = "Axel Niklasson <axel.niklasson@live.com>"
+	userConf := util.GetConf()
 
 	app.Commands = []cli.Command{
 		{
@@ -32,6 +34,9 @@ func main() {
 			UsageText: "plcli connect [hostname]",
 			Action: func(c *cli.Context) error {
 				hostname := c.Args().Get(0)
+				if hostname == "" {
+					hostname = userConf.DefaultHostname
+				}
 				return commands.ConnectOverSSH(hostname)
 			},
 		},
