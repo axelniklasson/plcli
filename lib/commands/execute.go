@@ -12,7 +12,8 @@ import (
 // ExecCmdOnNode executes a command on a hostname over ssh
 func ExecCmdOnNode(hostname string, cmd string) error {
 	fmt.Printf("Executing \"%s\" on %s\n", cmd, hostname)
-	sshConfig := util.GetClientConfig("chalmersple_2018_10_29")
+	conf := util.GetConf()
+	sshConfig := util.GetClientConfig(conf.Slice)
 
 	connection, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", hostname), sshConfig)
 	if err != nil {

@@ -1,51 +1,57 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
 	"os"
-
-	"github.com/go-ini/ini"
+	"plcli/lib/util"
 )
 
-// func readConfFile(filename string) error {
+func getStringFromUser(msg string) (string, error) {
+	fmt.Print(msg)
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		return scanner.Text(), nil
+	}
 
-// }
-
-// func writeConfFile(filename string) error {
-// 	err := ioutil.WriteFile(filename, nil, 0644)
-// 	return err
-// }
-
-func getConfFile() (*ini.File, error) {
-	return nil, nil
-
-	// homeDir, err := homedir.Dir()
-	// if err != nil {
-	// 	fmt.Printf("Failed to get users home dir: %v\n", err)
-	// 	os.Exit(1)
-	// }
-	// path := fmt.Sprintf("%s/%s", homeDir, lib.ConfFile)
-	// _, err = ini.Load(path)
-
-	// if err != nil {
-	// 	fmt.Printf("Fail to read file: %v\n", err)
-	// 	writeConfFile(path)
-	// 	readConfFile(path)
-	// 	os.Exit(1)
-	// }
+	if scanner.Err() != nil {
+		return "", scanner.Err()
+	}
+	return "", nil
 }
 
 // Init generates the ~/.plcli file and performs some other init tasks
 func Init() error {
-	fmt.Println("Initializing plcli")
+	fmt.Println("Initializing plcli..")
 
-	_, err := getConfFile()
-	if err != nil {
-		fmt.Printf("Could not get plcli conf file: %v\n", err)
-		os.Exit(1)
+	if exists, _ := util.ConfFileExists(); exists == true {
+		fmt.Printf("~/.plcli file already exists, aborting..\n")
+		os.Exit(0)
 	}
 
-	// write values to conf
+	// conf file does not exist, first write empty file
+	cfg := util.WriteConfFile()
+
+	plUsername, _ := getStringFromUser("What is your PlanetLab username? ")
+	plPassword, _ := getStringFromUser("What is your PlanetLab password? ")
+	plSlice, _ := getStringFromUser("What PlanetLab slice is your default one when connecting? ")
+	sshKeyAbsPath, _ := getStringFromUser("What is the absolute path to your ssh key used when connecting to PlanetLab? ")
+
+	cfg.NewSection("auth")
+	cfg.Section("auth").NewKey("pl_username", plUsername)
+	cfg.Section("auth").NewKey("pl_password", plPassword)
+	cfg.Section("auth").NewKey("pl_slice", plSlice)
+	cfg.Section("auth").NewKey("ssh_key_abs_path", sshKeyAbsPath)
+
+	path, _ := util.ConfFilePath()
+	err := cfg.SaveTo(path)
+
+	fmt.Println("Saving .plcli file")
+
+	if err != nil {
+		fmt.Printf("Could not save .plcli file: %v\n", err)
+		os.Exit(1)
+	}
 
 	return nil
 }
