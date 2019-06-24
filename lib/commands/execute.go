@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,10 +11,12 @@ import (
 )
 
 // ExecCmdOnNode executes a command on a hostname over ssh
-func ExecCmdOnNode(hostname string, cmd string) error {
-	fmt.Printf("Executing \"%s\" on %s\n", cmd, hostname)
-	conf := util.GetConf()
-	sshConfig := util.GetClientConfig(conf.Slice)
+func ExecCmdOnNode(slice string, hostname string, cmd string) error {
+	sshConfig := util.GetClientConfig(slice)
+
+	if cmd == "" {
+		return errors.New("Can't execute empty command")
+	}
 
 	connection, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", hostname), sshConfig)
 	if err != nil {
@@ -33,6 +36,7 @@ func ExecCmdOnNode(hostname string, cmd string) error {
 
 	go io.Copy(os.Stdout, stdout)
 
+	fmt.Printf("Executing \"%s\" on %s\n", cmd, hostname)
 	err = session.Run(cmd)
 	return err
 }

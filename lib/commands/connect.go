@@ -9,7 +9,7 @@ import (
 )
 
 // ConnectOverSSH sets up an ssh connection to a hostname
-func ConnectOverSSH(hostname string) error {
+func ConnectOverSSH(slice string, hostname string) error {
 	fmt.Printf("Connecting to %s\n", hostname)
 
 	binary, lookErr := exec.LookPath("ssh")
@@ -18,7 +18,7 @@ func ConnectOverSSH(hostname string) error {
 	}
 
 	conf := util.GetConf()
-	args := []string{"ssh", "-l", conf.Slice, "-i", conf.PrivateKey, hostname}
+	args := []string{"ssh", "-l", slice, "-i", conf.PrivateKey, hostname}
 	env := os.Environ()
 
 	execErr := syscall.Exec(binary, args, env)

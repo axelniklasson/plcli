@@ -5,3 +5,6 @@ const ConfFile = ".plcli"
 
 // SSHPort is the port to use when connecting over ssh
 const SSHPort = 22
+
+// PLApiURL is the URL to the PlanetLab API
+const PLApiURL = "https://www.planet-lab.eu/PLCAPI/"
