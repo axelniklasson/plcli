@@ -57,7 +57,7 @@ func main() {
 			Action: func(c *cli.Context) error {
 				node := c.Args().Get(0)
 				cmd := c.Args().Get(1)
-				return commands.ExecCmdOnNode(slice, node, cmd)
+				return commands.ExecCmdOnNode(slice, node, cmd, true)
 			},
 		},
 		{
@@ -86,6 +86,14 @@ func main() {
 			UsageText: "plcli list-nodes",
 			Action: func(c *cli.Context) error {
 				return commands.GetNodesForSlice(slice)
+			},
+		},
+		{
+			Name:      "health-check",
+			Usage:     "Performs a health check of all nodes attached to the slice and outputs IDs of healthy nodes",
+			UsageText: "plcli health-check",
+			Action: func(c *cli.Context) error {
+				return commands.HealthCheck(slice)
 			},
 		},
 	}

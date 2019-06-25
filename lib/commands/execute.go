@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"plcli/lib/util"
 
@@ -11,7 +12,7 @@ import (
 )
 
 // ExecCmdOnNode executes a command on a hostname over ssh
-func ExecCmdOnNode(slice string, hostname string, cmd string) error {
+func ExecCmdOnNode(slice string, hostname string, cmd string, showOutput bool) error {
 	sshConfig := util.GetClientConfig(slice)
 
 	if cmd == "" {
@@ -35,9 +36,11 @@ func ExecCmdOnNode(slice string, hostname string, cmd string) error {
 		return fmt.Errorf("Unable to setup stdout for session: %v", err)
 	}
 
-	go io.Copy(os.Stdout, stdout)
+	if showOutput {
+		go io.Copy(os.Stdout, stdout)
+	}
 
-	fmt.Printf("Executing \"%s\" on %s\n", cmd, hostname)
+	log.Printf("Executing \"%s\" on %s\n", cmd, hostname)
 	err = session.Run(cmd)
 	return err
 }

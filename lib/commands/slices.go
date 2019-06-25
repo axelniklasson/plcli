@@ -2,17 +2,17 @@ package commands
 
 import (
 	"fmt"
-	"plcli/lib/api"
+	"plcli/lib/pl"
 )
 
 // GetDetailsForSlice gets all details for a slice through the API and prints it
 func GetDetailsForSlice(slice string) error {
-	client := api.GetClient()
+	client := pl.GetClient()
 	args := make([]interface{}, 2)
-	args[0] = api.GetClientAuth()
+	args[0] = pl.GetClientAuth()
 	args[1] = slice
 
-	slices := []api.Slice{}
+	slices := []pl.Slice{}
 	err := client.Call("GetSlices", args, &slices)
 	if err != nil {
 		panic(err)

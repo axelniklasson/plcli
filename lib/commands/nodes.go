@@ -2,18 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"plcli/lib/api"
+	"plcli/lib/pl"
 )
 
 // GetNodesForSlice returns the list of nodes attached to the given slice
 func GetNodesForSlice(slice string) error {
-	client := api.GetClient()
-	args := make([]interface{}, 2)
-	args[0] = api.GetClientAuth()
-	args[1] = slice
-
-	slices := []api.Slice{}
-	err := client.Call("GetSlices", args, &slices)
+	slices, err := pl.GetSlices(slice)
 	if err != nil {
 		panic(err)
 	}
