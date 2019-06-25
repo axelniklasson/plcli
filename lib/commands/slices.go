@@ -18,6 +18,11 @@ func GetDetailsForSlice(slice string) error {
 		panic(err)
 	}
 
+	if len(slices) == 0 {
+		fmt.Printf("No slice with name %s found\n", slice)
+		return nil
+	}
+
 	fmt.Println(slices[0].ToString())
 
 	return nil

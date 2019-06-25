@@ -21,6 +21,7 @@ func ExecCmdOnNode(slice string, hostname string, cmd string) error {
 	connection, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", hostname), sshConfig)
 	if err != nil {
 		fmt.Printf("Failed to dial: %s\n", err)
+		fmt.Println("Try adding the selected key to the ssh agent through ssh-add")
 		return err
 	}
 
