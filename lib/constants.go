@@ -8,3 +8,6 @@ const SSHPort = 22
 
 // PLApiURL is the URL to the PlanetLab API
 const PLApiURL = "https://www.planet-lab.eu/PLCAPI/"
+
+// WorkerPoolSize controls the number of workers allowed to run concurrently
+const WorkerPoolSize = 10
