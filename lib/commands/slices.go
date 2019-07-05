@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"log"
 	"plcli/lib/pl"
 )
 
@@ -15,7 +16,7 @@ func GetDetailsForSlice(slice string) error {
 	slices := []pl.Slice{}
 	err := client.Call("GetSlices", args, &slices)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	if len(slices) == 0 {

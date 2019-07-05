@@ -25,9 +25,13 @@ func isHealthy(node pl.Node) bool {
 		return false
 	}
 
-	// try to ping google.com from node
+	// transfer healthcheck script
 
-	// try to open port
+	// run healthcheck script
+
+	// check if port open
+
+	// kill healthcheck script and remove from host
 
 	// if all succeeds, return true
 	return true
@@ -47,11 +51,11 @@ func worker(id int, jobs <-chan pl.Node, results chan<- JobResult) {
 
 // HealthCheck checks all nodes attached to a slice to find out which ones are healthy
 // healthy nodes are online and able to open a random port between 3000 and 9999
-func HealthCheck(sliceName string) error {
+func HealthCheck(sliceName string) []pl.Node {
 	// get all nodes attached to slice
 	nodes, err := pl.GetNodesForSlice(sliceName)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	jobs := make(chan pl.Node, len(nodes))
@@ -87,7 +91,8 @@ func HealthCheck(sliceName string) error {
 	log.Printf("Found %d healthy and %d faulty nodes!\n", len(healthyNodes), len(faultyNodes))
 	prettyPrint("### Healthy nodes ###", healthyNodes)
 	prettyPrint("### Faulty nodes ###", faultyNodes)
-	return nil
+	fmt.Println("")
+	return healthyNodes
 }
 
 func prettyPrint(header string, nodes []pl.Node) {

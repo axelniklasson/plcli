@@ -1,6 +1,7 @@
 package pl
 
 import (
+	"log"
 	"plcli/lib"
 	"plcli/lib/util"
 
@@ -31,7 +32,7 @@ func GetClient() *xmlrpc.Client {
 	if clientInstance == nil {
 		clientInstance, err := xmlrpc.NewClient(lib.PLApiURL, nil)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		return clientInstance
 	}

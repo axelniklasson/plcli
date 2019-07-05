@@ -5,6 +5,7 @@ import (
 	"os"
 	"plcli/lib/commands"
 	"plcli/lib/util"
+	"strings"
 
 	"github.com/urfave/cli"
 )
@@ -19,6 +20,8 @@ func main() {
 	conf := util.GetConf()
 
 	var slice string
+	var nodeCount int
+	var skipHealthcheck bool
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -26,6 +29,16 @@ func main() {
 			Value:       conf.Slice,
 			Usage:       "name of slice to use when connecting to PlanetLab",
 			Destination: &slice,
+		},
+		cli.IntFlag{
+			Name:        "node-count",
+			Usage:       "number of nodes to deploy to",
+			Destination: &nodeCount,
+		},
+		cli.BoolFlag{
+			Name:        "skip-healthcheck",
+			Usage:       "skip health check when deploying",
+			Destination: &skipHealthcheck,
 		},
 	}
 
@@ -93,7 +106,26 @@ func main() {
 			Usage:     "Performs a health check of all nodes attached to the slice and outputs IDs of healthy nodes",
 			UsageText: "plcli health-check",
 			Action: func(c *cli.Context) error {
-				return commands.HealthCheck(slice)
+				commands.HealthCheck(slice)
+				return nil
+			},
+		},
+		{
+			Name:      "deploy",
+			Usage:     "Deploys an application on PlanetLab nodes",
+			UsageText: "plcli deploy GIT_URL",
+			Action: func(c *cli.Context) error {
+				gitURL := c.Args().Get(0)
+				return commands.Deploy(slice, nodeCount, gitURL, skipHealthcheck)
+			},
+		},
+		{
+			Name:      "cleanup",
+			Usage:     "Performs node cleanup on the given nodes",
+			UsageText: "plcli cleanup HOSTNAME|HOSTNAME1,HOSTNAME2..",
+			Action: func(c *cli.Context) error {
+				hostnames := strings.Split(c.Args().Get(0), ",")
+				return commands.Cleanup(slice, hostnames)
 			},
 		},
 	}

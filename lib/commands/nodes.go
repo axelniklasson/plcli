@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"log"
 	"plcli/lib/pl"
 )
 
@@ -9,7 +10,7 @@ import (
 func GetNodesForSlice(slice string) error {
 	slices, err := pl.GetSlices(slice)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	output := ""

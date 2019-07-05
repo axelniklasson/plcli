@@ -1,6 +1,9 @@
 package pl
 
-import "fmt"
+import (
+	"fmt"
+	"log"
+)
 
 // GetSlices queries the PL API and returns all slices matching sliceName
 func GetSlices(sliceName string) ([]Slice, error) {
@@ -12,7 +15,7 @@ func GetSlices(sliceName string) ([]Slice, error) {
 	slices := []Slice{}
 	err := client.Call("GetSlices", args, &slices)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	return slices, nil
@@ -28,7 +31,7 @@ func GetNodeDetails(nodeID int) (Node, error) {
 	nodes := []Node{}
 	err := client.Call("GetNodes", args, &nodes)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	if len(nodes) == 0 {
@@ -59,7 +62,7 @@ func GetNodesForSlice(sliceName string) ([]Node, error) {
 	for idx, id := range nodeIDs {
 		node, err := GetNodeDetails(id)
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 
 		detailedNodes[idx] = node
