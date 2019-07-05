@@ -72,7 +72,7 @@ func HealthCheck(sliceName string) []pl.Node {
 	for _, n := range nodes {
 		jobs <- n
 	}
-	// done with writing to jobs channel, close this
+	// done with writing to jobs channel, close it
 	close(jobs)
 
 	// gather results, store all healthy nodes in healthyNodes slice

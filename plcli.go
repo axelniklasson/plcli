@@ -124,7 +124,12 @@ func main() {
 			Usage:     "Performs node cleanup on the given nodes",
 			UsageText: "plcli cleanup HOSTNAME|HOSTNAME1,HOSTNAME2..",
 			Action: func(c *cli.Context) error {
-				hostnames := strings.Split(c.Args().Get(0), ",")
+				hostnamesString := c.Args().Get(0)
+				if len(hostnamesString) == 0 {
+					log.Fatal("No hostnames found. Run as cleanup HOSTNAME|HOSTNAME1,HOSTNAME2..")
+				}
+
+				hostnames := strings.Split(hostnamesString, ",")
 				return commands.Cleanup(slice, hostnames)
 			},
 		},
