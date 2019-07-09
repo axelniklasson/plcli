@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"plcli/lib"
 	"plcli/lib/pl"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
@@ -197,6 +199,7 @@ func launchNodes(sliceName string, nodes []pl.Node, env map[string]string, cmds 
 
 // Deploy performs a PlanetLab deployment of app at gitUrl on nodeCount nodes using slice sliceName
 func Deploy(sliceName string, nodeCount int, gitURL string, skipHealthcheck bool) error {
+	start := time.Now()
 	log.Printf("Initiating deployment of %s to %d nodes using slice %s", gitURL, nodeCount, sliceName)
 
 	conf := parseYML(gitURL)
@@ -217,6 +220,11 @@ func Deploy(sliceName string, nodeCount int, gitURL string, skipHealthcheck bool
 	if len(nodes) < nodeCount {
 		log.Fatal(fmt.Errorf("Could not find enough nodes.. Found %d/%d. Run health check to learn more", len(nodes), nodeCount))
 	}
+
+	// shuffle nodes
+	log.Print("Shuffling nodes")
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
 
 	// pretty-print nodes that will be used for deployment
 	nodes = nodes[0:nodeCount]
@@ -244,5 +252,7 @@ func Deploy(sliceName string, nodeCount int, gitURL string, skipHealthcheck bool
 	}
 
 	log.Println("Deployment finished!")
+	elapsed := time.Since(start)
+	log.Printf("Deployment to %d nodes took %s", nodeCount, elapsed)
 	return nil
 }

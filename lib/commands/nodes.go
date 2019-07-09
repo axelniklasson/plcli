@@ -20,6 +20,6 @@ func GetNodesForSlice(slice string) error {
 		output = fmt.Sprintf("IDs of nodes attached to slice %s: %v", slice, slices[0].NodeIDs)
 	}
 
-	fmt.Println(output)
+	log.Println(output)
 	return nil
 }

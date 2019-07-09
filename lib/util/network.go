@@ -19,3 +19,10 @@ func CanPingHost(hostName string) bool {
 	log.Printf("Node %s responded!", hostName)
 	return true
 }
+
+// PortOpen tries to connect to hostname:port over TCP and returns whether it succeeds or not
+func PortOpen(hostName string, port int) bool {
+	log.Printf("Checking if port %d on node %s is open", port, hostName)
+	_, err := net.Dial("tcp", fmt.Sprintf("http://%s:%d", hostName, port))
+	return err != nil
+}

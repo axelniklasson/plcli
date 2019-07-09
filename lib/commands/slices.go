@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"log"
 	"plcli/lib/pl"
 )
@@ -20,11 +19,11 @@ func GetDetailsForSlice(slice string) error {
 	}
 
 	if len(slices) == 0 {
-		fmt.Printf("No slice with name %s found\n", slice)
+		log.Printf("No slice with name %s found\n", slice)
 		return nil
 	}
 
-	fmt.Println(slices[0].ToString())
+	log.Println(slices[0].ToString())
 
 	return nil
 }

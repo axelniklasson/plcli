@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"plcli/lib"
 
@@ -21,8 +22,7 @@ type Conf struct {
 func ConfFilePath() (string, error) {
 	homeDir, err := homedir.Dir()
 	if err != nil {
-		fmt.Printf("Failed to get users home dir: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Failed to get users home dir: %v\n", err)
 	}
 
 	return fmt.Sprintf("%s/%s", homeDir, lib.ConfFile), nil
@@ -32,8 +32,7 @@ func ConfFilePath() (string, error) {
 func ConfFileExists() (bool, error) {
 	path, err := ConfFilePath()
 	if err != nil {
-		fmt.Printf("Failed to get conf file path: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Failed to get conf file path: %v\n", err)
 	}
 
 	if _, err := os.Stat(path); err != nil {
@@ -49,14 +48,12 @@ func WriteConfFile() *ini.File {
 	path, _ := ConfFilePath()
 	_, err := os.Create(path)
 	if err != nil {
-		fmt.Printf("Could not write conf file: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Could not write conf file: %v\n", err)
 	}
 
 	cfg, err := ini.Load(path)
 	if err != nil {
-		fmt.Printf("Could not load conf file: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Could not load conf file: %v\n", err)
 	}
 
 	return cfg
@@ -72,8 +69,7 @@ func GetConf() *Conf {
 	cfg, err := ini.Load(path)
 
 	if err != nil {
-		fmt.Printf("Could not load conf file: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Could not load conf file: %v\n", err)
 	}
 
 	return &Conf{

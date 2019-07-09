@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"plcli/lib/util"
@@ -10,7 +10,7 @@ import (
 
 // ConnectOverSSH sets up an ssh connection to a hostname
 func ConnectOverSSH(slice string, hostname string) error {
-	fmt.Printf("Connecting to %s\n", hostname)
+	log.Printf("Connecting to %s\n", hostname)
 
 	binary, lookErr := exec.LookPath("ssh")
 	if lookErr != nil {

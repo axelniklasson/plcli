@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"plcli/lib/util"
 
@@ -9,9 +10,9 @@ import (
 )
 
 // Transfer copies a local file to a remote PlanetLab node
-func Transfer(slice string, node string, srcBlob string, targetPath string) error {
+func Transfer(slice string, hostname string, srcBlob string, targetPath string) error {
 	clientConfig := util.GetClientConfig(slice)
-	client := scp.NewClient(fmt.Sprintf("%s:22", node), clientConfig)
+	client := scp.NewClient(fmt.Sprintf("%s:22", hostname), clientConfig)
 
 	// Connect to the remote server
 	err := client.Connect()
@@ -34,7 +35,7 @@ func Transfer(slice string, node string, srcBlob string, targetPath string) erro
 		return err
 	}
 
-	fmt.Printf("Successfully transferred %s to %s:%s\n", srcBlob, node, targetPath)
+	log.Printf("Successfully transferred %s to %s:%s\n", srcBlob, hostname, targetPath)
 
 	return nil
 }

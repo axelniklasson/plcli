@@ -2,13 +2,12 @@ package commands
 
 import (
 	"bufio"
-	"fmt"
+	"log"
 	"os"
 	"plcli/lib/util"
 )
 
 func getStringFromUser(msg string) (string, error) {
-	fmt.Print(msg)
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		return scanner.Text(), nil
@@ -22,10 +21,10 @@ func getStringFromUser(msg string) (string, error) {
 
 // Init generates the ~/.plcli file and performs some other init tasks
 func Init() error {
-	fmt.Println("Initializing plcli..")
+	log.Println("Initializing plcli..")
 
 	if exists, _ := util.ConfFileExists(); exists == true {
-		fmt.Printf("~/.plcli file already exists, aborting..\n")
+		log.Printf("~/.plcli file already exists, aborting..\n")
 		os.Exit(0)
 	}
 
@@ -46,10 +45,10 @@ func Init() error {
 	path, _ := util.ConfFilePath()
 	err := cfg.SaveTo(path)
 
-	fmt.Println("Saving .plcli file")
+	log.Println("Saving .plcli file")
 
 	if err != nil {
-		fmt.Printf("Could not save .plcli file: %v\n", err)
+		log.Printf("Could not save .plcli file: %v\n", err)
 		os.Exit(1)
 	}
 

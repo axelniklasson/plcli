@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"plcli/lib/commands"
+	"plcli/lib/pl"
 	"plcli/lib/util"
 	"strings"
 
@@ -22,6 +23,7 @@ func main() {
 	var slice string
 	var nodeCount int
 	var skipHealthcheck bool
+	var output string
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -39,6 +41,11 @@ func main() {
 			Name:        "skip-healthcheck",
 			Usage:       "skip health check when deploying",
 			Destination: &skipHealthcheck,
+		},
+		cli.StringFlag{
+			Name:        "output",
+			Usage:       "file to write output to (if applicable)",
+			Destination: &output,
 		},
 	}
 
@@ -103,7 +110,7 @@ func main() {
 		},
 		{
 			Name:      "health-check",
-			Usage:     "Performs a health check of all nodes attached to the slice and outputs IDs of healthy nodes",
+			Usage:     "Performs a health check of all nodes attached to the slice and outputs healthy nodes",
 			UsageText: "plcli health-check",
 			Action: func(c *cli.Context) error {
 				commands.HealthCheck(slice)
@@ -120,16 +127,50 @@ func main() {
 			},
 		},
 		{
+			Name:      "provision",
+			Usage:     "Provisions node(s) using a provided script",
+			UsageText: "plcli provision PATH_TO_SCRIPT HOSTNAME|HOSTNAME1,HOSTNAME1",
+			Action: func(c *cli.Context) error {
+				if len(c.Args()) != 2 {
+					log.Fatal("Run as provision PATH_TO_SCRIPT HOSTNAME|HOSTNAME1,HOSTNAME1")
+				}
+				provisionScriptPath := c.Args().Get(0)
+				hostnamesString := c.Args().Get(1)
+				var hostnames []string
+
+				if len(hostnamesString) == 0 {
+					log.Fatal("No hostnames found. Run as provision PATH_TO_SCRIPT HOSTNAME|HOSTNAME1,HOSTNAME2..")
+				} else if hostnamesString == "all" {
+					log.Printf("Finding all nodes attached to slice %s", slice)
+					nodes, _ := pl.GetNodesForSlice(slice)
+					for _, n := range nodes {
+						hostnames = append(hostnames, n.HostName)
+					}
+				} else {
+					hostnames = strings.Split(hostnamesString, ",")
+				}
+
+				return commands.Provision(slice, provisionScriptPath, hostnames)
+			},
+		},
+		{
 			Name:      "cleanup",
 			Usage:     "Performs node cleanup on the given nodes",
 			UsageText: "plcli cleanup HOSTNAME|HOSTNAME1,HOSTNAME2..",
 			Action: func(c *cli.Context) error {
 				hostnamesString := c.Args().Get(0)
-				if len(hostnamesString) == 0 {
-					log.Fatal("No hostnames found. Run as cleanup HOSTNAME|HOSTNAME1,HOSTNAME2..")
-				}
+				var hostnames []string
 
-				hostnames := strings.Split(hostnamesString, ",")
+				if len(hostnamesString) == 0 {
+					log.Fatal("No hostnames found. Run as cleanup all|HOSTNAME|HOSTNAME1,HOSTNAME2..")
+				} else if hostnamesString == "all" {
+					nodes, _ := pl.GetNodesForSlice(slice)
+					for _, n := range nodes {
+						hostnames = append(hostnames, n.HostName)
+					}
+				} else {
+					hostnames = strings.Split(hostnamesString, ",")
+				}
 				return commands.Cleanup(slice, hostnames)
 			},
 		},

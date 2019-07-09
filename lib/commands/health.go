@@ -6,11 +6,10 @@ import (
 	"plcli/lib"
 	"plcli/lib/pl"
 	"plcli/lib/util"
+	"time"
 )
 
-func isHealthy(node pl.Node) bool {
-	conf := util.GetConf()
-
+func isHealthy(sliceName string, node pl.Node) bool {
 	// ping node and see if it is online
 	canPing := util.CanPingHost(node.HostName)
 	if canPing == false {
@@ -19,31 +18,48 @@ func isHealthy(node pl.Node) bool {
 	}
 
 	// try executing a command on node
-	err := ExecCmdOnNode(conf.Slice, node.HostName, "ls /", false)
+	err := ExecCmdOnNode(sliceName, node.HostName, "ls /", false)
 	if err != nil {
 		log.Printf("Could not connect/execute command on node %s", node.HostName)
 		return false
 	}
 
 	// transfer healthcheck script
+	err = Transfer(sliceName, node.HostName, fmt.Sprintf("%s/scripts/healthcheck.sh", lib.BasePath), "~/healthcheck.sh")
+	if err != nil {
+		log.Printf("Could not transfer healthcheck script to node %s", node.HostName)
+		return false
+	}
 
 	// run healthcheck script
+	err = ExecCmdOnNode(sliceName, node.HostName, "cd ~; nohup sh healthcheck.sh > /dev/null 2>&1 &", false)
+	if err != nil {
+		log.Printf("Something went wrong with running healthcheck script on node %s", node.HostName)
+		return false
+	}
 
-	// check if port open
+	// check if port 9876 is opened by healthcheck script
+	if !util.PortOpen(node.HostName, 9876) {
+		log.Printf("Could not open port 9876 on node %s", node.HostName)
+		return false
+	}
 
+	time.Sleep(time.Second * 3)
 	// kill healthcheck script and remove from host
+	ExecCmdOnNode(sliceName, node.HostName, "kill -9 -1", false)
+	ExecCmdOnNode(sliceName, node.HostName, "rm ~/healthcheck.sh", false)
 
 	// if all succeeds, return true
 	return true
 }
 
 // worker used to healthcheck nodes
-func worker(id int, jobs <-chan pl.Node, results chan<- JobResult) {
+func worker(id int, sliceName string, jobs <-chan pl.Node, results chan<- JobResult) {
 	log.Printf("Worker %d launched", id)
 	// collect jobs from channel
 	for n := range jobs {
 		log.Printf("Worker %d checking node %s", id, n.HostName)
-		nodeHealthy := isHealthy(n)
+		nodeHealthy := isHealthy(sliceName, n)
 		// write result of job back to main thread
 		results <- JobResult{n, nodeHealthy}
 	}
@@ -64,7 +80,7 @@ func HealthCheck(sliceName string) []pl.Node {
 	// launch workers
 	i := 0
 	for i < lib.WorkerPoolSize {
-		go worker(i, jobs, results)
+		go worker(i, sliceName, jobs, results)
 		i++
 	}
 

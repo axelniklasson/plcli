@@ -1,5 +1,16 @@
 package lib
 
+import (
+	"path/filepath"
+	"runtime"
+)
+
+var (
+	_, b, _, _ = runtime.Caller(0)
+	// BasePath represents the absolute path to the lib/ folder
+	BasePath = filepath.Dir(b)
+)
+
 // ConfFile is the plcli conf file residing in users home dir
 const ConfFile = ".plcli"
 

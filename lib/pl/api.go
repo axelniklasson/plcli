@@ -49,10 +49,10 @@ func GetNodesForSlice(sliceName string) ([]Node, error) {
 	slices, _ := GetSlices(sliceName)
 
 	if len(slices) > 1 {
-		fmt.Println("Found more than one slice, please enter slice name correctly")
+		log.Fatal("Found more than one slice, please enter slice name correctly")
 		return nil, nil
 	} else if len(slices) == 0 {
-		fmt.Println(fmt.Sprintf("Found no slice matching %s, please enter slice name correctly", sliceName))
+		log.Fatal(fmt.Sprintf("Found no slice matching %s, please enter slice name correctly", sliceName))
 	}
 
 	nodeIDs := slices[0].NodeIDs
