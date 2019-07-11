@@ -10,6 +10,8 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
+var conf = Conf{}
+
 // Conf represents a user config related to PlanetLab and plcli
 type Conf struct {
 	Username   string
@@ -65,6 +67,10 @@ func loadConfFromFile() (*ini.File, error) {
 
 // GetConf returns the current user config
 func GetConf() *Conf {
+	if (conf != Conf{}) {
+		return &conf
+	}
+
 	path, _ := ConfFilePath()
 	cfg, err := ini.Load(path)
 
@@ -72,10 +78,12 @@ func GetConf() *Conf {
 		log.Fatalf("Could not load conf file: %v\n", err)
 	}
 
-	return &Conf{
+	conf = Conf{
 		cfg.Section("auth").Key("pl_username").String(),
 		cfg.Section("auth").Key("pl_password").String(),
 		cfg.Section("auth").Key("pl_slice").String(),
 		cfg.Section("auth").Key("ssh_key_abs_path").String(),
 	}
+
+	return &conf
 }

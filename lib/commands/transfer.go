@@ -21,7 +21,10 @@ func Transfer(slice string, hostname string, srcBlob string, targetPath string) 
 		return err
 	}
 
-	f, _ := os.Open(srcBlob)
+	f, err := os.Open(srcBlob)
+	if err != nil {
+		return err
+	}
 
 	// Close client connection after the file has been copied
 	defer client.Close()

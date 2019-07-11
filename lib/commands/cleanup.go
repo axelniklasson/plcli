@@ -9,9 +9,8 @@ import (
 func Cleanup(sliceName string, hostnames []string) error {
 	var wg sync.WaitGroup
 	cmds := []string{
-		"rm -rf ~/app",
-		"rm ~/healthcheck.sh",
 		"kill -9 -1",
+		"cd && rm -rf *",
 	}
 
 	for _, hostname := range hostnames {

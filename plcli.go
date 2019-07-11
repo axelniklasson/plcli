@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"plcli/lib"
 	"plcli/lib/commands"
 	"plcli/lib/pl"
 	"plcli/lib/util"
@@ -24,6 +25,9 @@ func main() {
 	var nodeCount int
 	var skipHealthcheck bool
 	var output string
+	var removeFaulty bool
+	var attachToSlice bool
+	var scale int
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -46,6 +50,28 @@ func main() {
 			Name:        "output",
 			Usage:       "file to write output to (if applicable)",
 			Destination: &output,
+		},
+		cli.BoolFlag{
+			Name:        "remove-faulty",
+			Usage:       "remove faulty nodes from slice during healthcheck",
+			Destination: &removeFaulty,
+		},
+		cli.BoolFlag{
+			Name:        "attach-to-slice",
+			Usage:       "attach all healthy nodes to slice",
+			Destination: &attachToSlice,
+		},
+		cli.IntFlag{
+			Name:        "workers",
+			Value:       lib.WorkerPoolSize,
+			Usage:       "number of workers to use",
+			Destination: &lib.WorkerPoolSize,
+		},
+		cli.IntFlag{
+			Name:        "scale",
+			Value:       1,
+			Usage:       "number of instances of app to launch on each node",
+			Destination: &scale,
 		},
 	}
 
@@ -111,10 +137,18 @@ func main() {
 		{
 			Name:      "health-check",
 			Usage:     "Performs a health check of all nodes attached to the slice and outputs healthy nodes",
-			UsageText: "plcli health-check",
+			UsageText: "plcli [--remove-faulty] health-check",
 			Action: func(c *cli.Context) error {
-				commands.HealthCheck(slice)
+				commands.HealthCheck(slice, removeFaulty)
 				return nil
+			},
+		},
+		{
+			Name:      "discover-healthy",
+			Usage:     "Performs a health check of all nodes in the system and outputs hostnames and ids to an output file",
+			UsageText: "plcli [--attach-to-slice] discover-healthy",
+			Action: func(c *cli.Context) error {
+				return commands.DiscoverHealthyNodes(slice, attachToSlice)
 			},
 		},
 		{
@@ -123,7 +157,7 @@ func main() {
 			UsageText: "plcli deploy GIT_URL",
 			Action: func(c *cli.Context) error {
 				gitURL := c.Args().Get(0)
-				return commands.Deploy(slice, nodeCount, gitURL, skipHealthcheck)
+				return commands.Deploy(slice, nodeCount, gitURL, skipHealthcheck, scale)
 			},
 		},
 		{

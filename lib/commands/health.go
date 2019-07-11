@@ -9,98 +9,135 @@ import (
 	"time"
 )
 
-func isHealthy(sliceName string, node pl.Node) bool {
+type funcArgs struct {
+	SliceName string
+	Node      pl.Node
+}
+
+type healthCheckResult struct {
+	Node      pl.Node
+	IsHealthy bool
+}
+
+func isHealthy(i interface{}) (interface{}, error) {
 	// ping node and see if it is online
-	canPing := util.CanPingHost(node.HostName)
-	if canPing == false {
+	args := i.(funcArgs)
+	sliceName := args.SliceName
+	node := args.Node
+
+	log.Printf("Performing health check for node %s", node.HostName)
+
+	err := util.PingHost(node.HostName)
+	if err != nil {
 		log.Printf("Could not ping node %s", node.HostName)
-		return false
+		return healthCheckResult{node, false}, nil
 	}
 
 	// try executing a command on node
-	err := ExecCmdOnNode(sliceName, node.HostName, "ls /", false)
+	err = ExecCmdOnNode(sliceName, node.HostName, "ls /", false)
 	if err != nil {
 		log.Printf("Could not connect/execute command on node %s", node.HostName)
-		return false
+		return healthCheckResult{node, false}, err
 	}
 
 	// transfer healthcheck script
 	err = Transfer(sliceName, node.HostName, fmt.Sprintf("%s/scripts/healthcheck.sh", lib.BasePath), "~/healthcheck.sh")
 	if err != nil {
 		log.Printf("Could not transfer healthcheck script to node %s", node.HostName)
-		return false
+		return healthCheckResult{node, false}, err
 	}
 
 	// run healthcheck script
 	err = ExecCmdOnNode(sliceName, node.HostName, "cd ~; nohup sh healthcheck.sh > /dev/null 2>&1 &", false)
 	if err != nil {
 		log.Printf("Something went wrong with running healthcheck script on node %s", node.HostName)
-		return false
+		return healthCheckResult{node, false}, err
 	}
 
-	// check if port 9876 is opened by healthcheck script
-	if !util.PortOpen(node.HostName, 9876) {
-		log.Printf("Could not open port 9876 on node %s", node.HostName)
-		return false
-	}
-
+	// sleep 3s to wait for healthcheck script to start
 	time.Sleep(time.Second * 3)
+
+	// check if port 9876 is opened by healthcheck script. maximum 10 tries.
+	tries := 1
+	portOpen := false
+	for {
+		tries = tries + 1
+
+		err = util.CheckPortOpen(node.HostName, 9876)
+		if err == nil {
+			portOpen = true
+			break
+		} else {
+			// wait for 2s before retry
+			time.Sleep(time.Second * 2)
+		}
+
+		if tries == 10 {
+			break
+		}
+	}
+
+	if !portOpen {
+		log.Printf("Could not open port 9876 on node %s", node.HostName)
+		return healthCheckResult{node, false}, err
+	}
+
 	// kill healthcheck script and remove from host
-	ExecCmdOnNode(sliceName, node.HostName, "kill -9 -1", false)
-	ExecCmdOnNode(sliceName, node.HostName, "rm ~/healthcheck.sh", false)
+	err = ExecCmdOnNode(sliceName, node.HostName, "kill -9 -1; rm ~/healthcheck.sh", false)
+	if err != nil {
+		return healthCheckResult{node, false}, err
+	}
 
 	// if all succeeds, return true
-	return true
-}
-
-// worker used to healthcheck nodes
-func worker(id int, sliceName string, jobs <-chan pl.Node, results chan<- JobResult) {
-	log.Printf("Worker %d launched", id)
-	// collect jobs from channel
-	for n := range jobs {
-		log.Printf("Worker %d checking node %s", id, n.HostName)
-		nodeHealthy := isHealthy(sliceName, n)
-		// write result of job back to main thread
-		results <- JobResult{n, nodeHealthy}
-	}
+	return healthCheckResult{node, true}, nil
 }
 
 // HealthCheck checks all nodes attached to a slice to find out which ones are healthy
 // healthy nodes are online and able to open a random port between 3000 and 9999
-func HealthCheck(sliceName string) []pl.Node {
+func HealthCheck(sliceName string, removeFaulty bool) []pl.Node {
 	// get all nodes attached to slice
 	nodes, err := pl.GetNodesForSlice(sliceName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	jobs := make(chan pl.Node, len(nodes))
-	results := make(chan JobResult, len(nodes))
+	// setup channels to write jobs and get back jobresults
+	jobs := make(chan util.Job, len(nodes))
+	results := make(chan util.JobResult, len(nodes))
+
+	// construct jobs and write over channel
+	for _, n := range nodes {
+		args := funcArgs{sliceName, n}
+		workerFunc := func(i interface{}) (interface{}, error) {
+			args = i.(funcArgs)
+			return isHealthy(args)
+		}
+		jobs <- util.Job{Func: workerFunc, Args: args}
+	}
+	close(jobs)
 
 	// launch workers
-	i := 0
-	for i < lib.WorkerPoolSize {
-		go worker(i, sliceName, jobs, results)
-		i++
+	workerCount := lib.WorkerPoolSize
+	if len(nodes) < workerCount {
+		workerCount = len(nodes)
 	}
-
-	// write nodes to jobs channel
-	for _, n := range nodes {
-		jobs <- n
+	for i := 0; i < workerCount; i++ {
+		go util.Worker(i, jobs, results)
 	}
-	// done with writing to jobs channel, close it
-	close(jobs)
 
 	// gather results, store all healthy nodes in healthyNodes slice
 	healthyNodes := []pl.Node{}
 	faultyNodes := []pl.Node{}
 	for j := 0; j < len(nodes); j++ {
 		r := <-results
-		if r.IsHealthy {
-			healthyNodes = append(healthyNodes, r.Node)
+		jobResult := r.Result.(healthCheckResult)
+		if jobResult.IsHealthy {
+			healthyNodes = append(healthyNodes, jobResult.Node)
 		} else {
-			faultyNodes = append(faultyNodes, r.Node)
+			faultyNodes = append(faultyNodes, jobResult.Node)
 		}
+
+		log.Printf("Job %d/%d finished!", len(healthyNodes)+len(faultyNodes), len(nodes))
 	}
 
 	// pretty-print results from health check
@@ -108,11 +145,23 @@ func HealthCheck(sliceName string) []pl.Node {
 	prettyPrint("### Healthy nodes ###", healthyNodes)
 	prettyPrint("### Faulty nodes ###", faultyNodes)
 	fmt.Println("")
+
+	if removeFaulty {
+		if len(faultyNodes) == 0 {
+			log.Print("No faulty nodes to remove!")
+		} else {
+			pl.SetNodesForSlice(sliceName, healthyNodes)
+		}
+	}
+
 	return healthyNodes
 }
 
 func prettyPrint(header string, nodes []pl.Node) {
 	fmt.Printf("\n%s\n", header)
+	if len(nodes) == 0 {
+		fmt.Println("No nodes to print!")
+	}
 	for _, n := range nodes {
 		fmt.Printf("%s [%d]\n", n.HostName, n.NodeID)
 	}

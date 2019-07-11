@@ -11,14 +11,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// func getColor(i int) func(string, ...interface{}) {
-// 	possibleColors := []func(string, ...interface{}){
-// 		color.Blue, color.Red, color.Green, color.Cyan, color.Magenta, color.Yellow,
-// 	}
-
-// 	return possibleColors[i%len(possibleColors)]
-// }
-
 // ExecCmdOnNode executes a command on a hostname over ssh
 func ExecCmdOnNode(slice string, hostname string, cmd string, showOutput bool) error {
 	sshConfig := util.GetClientConfig(slice)
@@ -34,17 +26,25 @@ func ExecCmdOnNode(slice string, hostname string, cmd string, showOutput bool) e
 		return err
 	}
 
+	defer connection.Close()
+
 	session, err := connection.NewSession()
+
 	if err != nil {
+		session.Close()
 		return err
 	}
 
+	defer session.Close()
+
 	stdout, err := session.StdoutPipe()
 	if err != nil {
+		session.Close()
 		return fmt.Errorf("Unable to setup stdout for session: %v", err)
 	}
 	stderr, err := session.StderrPipe()
 	if err != nil {
+		session.Close()
 		return fmt.Errorf("Unable to setup stderr for session: %v", err)
 	}
 
@@ -56,23 +56,26 @@ func ExecCmdOnNode(slice string, hostname string, cmd string, showOutput bool) e
 			for scanner.Scan() {
 				msg := scanner.Text()
 				c("%s [stdout] ===> %s\n", hostname, msg)
-				// fmt.Printf("%s [stdout] ===> %s\n", hostname, msg)
 			}
 		}(stdout)
 
 		go func(stderr io.Reader) {
-			reader := io.MultiReader(stdout)
+			reader := io.MultiReader(stderr)
 			scanner := bufio.NewScanner(reader)
 			c := util.GetColorForHostname(hostname)
 			for scanner.Scan() {
 				msg := scanner.Text()
 				c("%s [stderr] ===> %s\n", hostname, msg)
-				// fmt.Printf("%s [stderr] ===> %s\n", hostname, msg)
 			}
 		}(stderr)
 	}
 
 	log.Printf("Executing \"%s\" on %s\n", cmd, hostname)
 	err = session.Run(cmd)
-	return err
+	if err != nil {
+		session.Close()
+		return err
+	}
+
+	return nil
 }
