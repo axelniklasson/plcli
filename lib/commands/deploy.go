@@ -117,18 +117,6 @@ func launch(sliceName string, node pl.Node, scriptString string, instanceID int)
 	err := ExecCmdOnNode(sliceName, node.HostName, cmdString, false)
 	return err
 
-	// write start script to node
-	// err := ExecCmdOnNode(
-	// 	sliceName,
-	// 	node.HostName,
-	// 	fmt.Sprintf("cd ~/app && echo '%s' > start_instance_%d.sh && chmod +x start_instance_%d.sh", scriptString, instanceID, instanceID),
-	// 	false)
-
-	// if err != nil {
-	// 	return err
-	// }
-	// launch app using start script in background
-
 }
 
 // worker that takes care of bootstrapping a node prior to app launch
@@ -226,11 +214,9 @@ func launchNodes(sliceName string, nodes []pl.Node, env map[string]string, cmds 
 		jobs <- j
 	}
 	close(jobs)
-	fmt.Println("HERE")
 
 	launches := 0
 	for j := 0; j < instanceCount; j++ {
-		log.Printf("Waiting for results..")
 		res := <-results
 		if res.Error != nil {
 			log.Fatalf("Instance launch on node %s failed with errror: %v", res.Node.HostName, res.Error)
