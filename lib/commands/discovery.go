@@ -36,5 +36,10 @@ func DiscoverHealthyNodes(sliceName string, attachToSlice bool) error {
 		pl.SetNodeIDsForSlice(sliceName, nodes)
 	}
 
+	err = writeNodesToFile(healthyNodes)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

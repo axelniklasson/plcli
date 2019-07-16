@@ -24,10 +24,10 @@ func main() {
 	var slice string
 	var nodeCount int
 	var skipHealthcheck bool
-	var output string
 	var removeFaulty bool
 	var attachToSlice bool
 	var scale int
+	var nodesFile string
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -45,11 +45,6 @@ func main() {
 			Name:        "skip-healthcheck",
 			Usage:       "skip health check when deploying",
 			Destination: &skipHealthcheck,
-		},
-		cli.StringFlag{
-			Name:        "output",
-			Usage:       "file to write output to (if applicable)",
-			Destination: &output,
 		},
 		cli.BoolFlag{
 			Name:        "remove-faulty",
@@ -72,6 +67,11 @@ func main() {
 			Value:       1,
 			Usage:       "number of instances of app to launch on each node",
 			Destination: &scale,
+		},
+		cli.StringFlag{
+			Name:        "nodes-file",
+			Usage:       "file containing node hostnames and ids of the form \"ID,HOSTNAME\n\" on each line",
+			Destination: &nodesFile,
 		},
 	}
 
