@@ -2,8 +2,9 @@ package commands
 
 import (
 	"log"
-	"github.com/axelniklasson/plcli/lib/pl"
 	"time"
+
+	"github.com/axelniklasson/plcli/lib/pl"
 )
 
 // DiscoverHealthyNodes checks all nodes in the system to find out which are healthy

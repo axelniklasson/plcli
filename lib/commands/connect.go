@@ -4,8 +4,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"github.com/axelniklasson/plcli/lib/util"
 	"syscall"
+
+	"github.com/axelniklasson/plcli/lib/util"
 )
 
 // ConnectOverSSH sets up an ssh connection to a hostname

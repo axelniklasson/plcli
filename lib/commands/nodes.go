@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"github.com/axelniklasson/plcli/lib/pl"
 	"strconv"
 	"strings"
+
+	"github.com/axelniklasson/plcli/lib/pl"
 )
 
 // GetNodesForSlice returns the list of nodes attached to the given slice

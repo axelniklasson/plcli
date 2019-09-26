@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"log"
 	"os"
+
 	"github.com/axelniklasson/plcli/lib/util"
 )
 
