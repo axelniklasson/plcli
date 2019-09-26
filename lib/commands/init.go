@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 
@@ -9,6 +10,7 @@ import (
 )
 
 func getStringFromUser(msg string) (string, error) {
+	fmt.Print(msg)
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		return scanner.Text(), nil
@@ -22,12 +24,12 @@ func getStringFromUser(msg string) (string, error) {
 
 // Init generates the ~/.plcli file and performs some other init tasks
 func Init() error {
-	log.Println("Initializing plcli..")
-
 	if exists, _ := util.ConfFileExists(); exists == true {
 		log.Printf("~/.plcli file already exists, aborting..\n")
 		os.Exit(0)
 	}
+
+	log.Println("Initializing plcli..")
 
 	// conf file does not exist, first write empty file
 	cfg := util.WriteConfFile()

@@ -76,7 +76,8 @@ func GetConf() *Conf {
 	cfg, err := ini.Load(path)
 
 	if err != nil {
-		log.Fatalf("Could not load conf file: %v\n", err)
+		log.Printf("Could not load conf file: %v. Run plcli init.\n", err)
+		return &Conf{Slice: ""}
 	}
 
 	conf = Conf{
