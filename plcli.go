@@ -127,9 +127,23 @@ func main() {
 			Usage:     "Execute a command on a PlanetLab node",
 			UsageText: "plcli execute [command] [HOSTNAME|all|HOSTNAME1,HOSTNAME2..]",
 			Action: func(c *cli.Context) error {
-				hostname := c.Args().Get(0)
-				cmd := c.Args().Get(1)
-				return commands.ExecCmdOnNode(options.Slice, hostname, cmd, true)
+				cmd := c.Args().Get(0)
+				hostnamesString := c.Args().Get(1)
+				var hostnames []string
+
+				if len(hostnamesString) == 0 {
+					log.Fatal("No hostnames found. Run as provision PATH_TO_SCRIPT HOSTNAME|all|HOSTNAME1,HOSTNAME2..")
+				} else if hostnamesString == "all" {
+					log.Printf("Finding all nodes attached to slice %s", options.Slice)
+					nodes, _ := pl.GetNodesForSlice(options.Slice)
+					for _, n := range nodes {
+						hostnames = append(hostnames, n.HostName)
+					}
+				} else {
+					hostnames = strings.Split(hostnamesString, ",")
+				}
+
+				return commands.ExecCmdOnNodes(hostnames, cmd, options)
 			},
 		},
 		{
