@@ -3,10 +3,11 @@ package commands
 import (
 	"fmt"
 	"log"
-	"plcli/lib"
-	"plcli/lib/pl"
-	"plcli/lib/util"
 	"time"
+
+	"github.com/axelniklasson/plcli/lib"
+	"github.com/axelniklasson/plcli/lib/pl"
+	"github.com/axelniklasson/plcli/lib/util"
 )
 
 type funcArgs struct {

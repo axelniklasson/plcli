@@ -6,10 +6,28 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"plcli/lib/util"
+	"sync"
+
+	"github.com/axelniklasson/plcli/lib/util"
 
 	"golang.org/x/crypto/ssh"
 )
+
+// ExecCmdOnNodes executes cmd on all hosts in parallel
+func ExecCmdOnNodes(hostnames []string, cmd string, options *util.Options) error {
+	wg := sync.WaitGroup{}
+	for _, hostname := range hostnames {
+		wg.Add(1)
+
+		go func(hostname string) {
+			defer wg.Done()
+			ExecCmdOnNode(options.Slice, hostname, cmd, true)
+		}(hostname)
+	}
+
+	wg.Wait()
+	return nil
+}
 
 // ExecCmdOnNode executes a command on a hostname over ssh
 func ExecCmdOnNode(slice string, hostname string, cmd string, showOutput bool) error {

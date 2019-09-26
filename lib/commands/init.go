@@ -4,7 +4,8 @@ import (
 	"bufio"
 	"log"
 	"os"
-	"plcli/lib/util"
+
+	"github.com/axelniklasson/plcli/lib/util"
 )
 
 func getStringFromUser(msg string) (string, error) {

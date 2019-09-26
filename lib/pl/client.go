@@ -2,8 +2,9 @@ package pl
 
 import (
 	"log"
-	"plcli/lib"
-	"plcli/lib/util"
+
+	"github.com/axelniklasson/plcli/lib"
+	"github.com/axelniklasson/plcli/lib/util"
 
 	"github.com/kolo/xmlrpc"
 )

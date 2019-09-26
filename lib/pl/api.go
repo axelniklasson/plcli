@@ -3,9 +3,10 @@ package pl
 import (
 	"fmt"
 	"log"
-	"plcli/lib"
-	"plcli/lib/util"
 	"time"
+
+	"github.com/axelniklasson/plcli/lib"
+	"github.com/axelniklasson/plcli/lib/util"
 )
 
 // GetSlices queries the PL API and returns all slices matching sliceName
