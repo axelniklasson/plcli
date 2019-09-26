@@ -10,9 +10,7 @@ export PATH=$PATH:$GOPATH/bin
 Add it to your bash_profile or similar if you want this to be persistent.
 
 ```
-cd $GOPATH/src && git clone https://github.com/axelniklasson/plcli.git && cd plcli
-go get -v
-go install
+go get -u github.com/axelniklasson/plcli
 ```
 
 You can now run `plcli` and start using the PlanetLab CLI!
