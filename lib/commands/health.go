@@ -3,9 +3,9 @@ package commands
 import (
 	"fmt"
 	"log"
-	"plcli/lib"
-	"plcli/lib/pl"
-	"plcli/lib/util"
+	"github.com/axelniklasson/plcli/lib"
+	"github.com/axelniklasson/plcli/lib/pl"
+	"github.com/axelniklasson/plcli/lib/util"
 	"time"
 )
 

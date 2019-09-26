@@ -2,7 +2,8 @@ package commands
 
 import (
 	"log"
-	"plcli/lib/pl"
+
+	"github.com/axelniklasson/plcli/lib/pl"
 )
 
 // GetDetailsForSlice gets all details for a slice through the API and prints it

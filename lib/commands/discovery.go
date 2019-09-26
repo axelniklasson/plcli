@@ -2,7 +2,7 @@ package commands
 
 import (
 	"log"
-	"plcli/lib/pl"
+	"github.com/axelniklasson/plcli/lib/pl"
 	"time"
 )
 

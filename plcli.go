@@ -3,11 +3,12 @@ package main
 import (
 	"log"
 	"os"
-	"plcli/lib"
-	"plcli/lib/commands"
-	"plcli/lib/pl"
-	"plcli/lib/util"
 	"strings"
+
+	"github.com/axelniklasson/plcli/lib"
+	"github.com/axelniklasson/plcli/lib/commands"
+	"github.com/axelniklasson/plcli/lib/pl"
+	"github.com/axelniklasson/plcli/lib/util"
 
 	"github.com/urfave/cli"
 )
@@ -20,41 +21,34 @@ func main() {
 	app.Author = "Axel Niklasson <axel.niklasson@live.com>"
 
 	conf := util.GetConf()
-
-	var slice string
-	var nodeCount int
-	var skipHealthcheck bool
-	var removeFaulty bool
-	var attachToSlice bool
-	var scale int
-	var nodesFile string
+	options := &util.Options{}
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "slice",
 			Value:       conf.Slice,
 			Usage:       "name of slice to use when connecting to PlanetLab",
-			Destination: &slice,
+			Destination: &options.Slice,
 		},
 		cli.IntFlag{
 			Name:        "node-count",
 			Usage:       "number of nodes to deploy to",
-			Destination: &nodeCount,
+			Destination: &options.NodeCount,
 		},
 		cli.BoolFlag{
 			Name:        "skip-healthcheck",
 			Usage:       "skip health check when deploying",
-			Destination: &skipHealthcheck,
+			Destination: &options.SkipHealthCheck,
 		},
 		cli.BoolFlag{
 			Name:        "remove-faulty",
 			Usage:       "remove faulty nodes from slice during healthcheck",
-			Destination: &removeFaulty,
+			Destination: &options.RemoveFaulty,
 		},
 		cli.BoolFlag{
 			Name:        "attach-to-slice",
 			Usage:       "attach all healthy nodes to slice",
-			Destination: &attachToSlice,
+			Destination: &options.AttachToSlice,
 		},
 		cli.IntFlag{
 			Name:        "workers",
@@ -66,12 +60,44 @@ func main() {
 			Name:        "scale",
 			Value:       1,
 			Usage:       "number of instances of app to launch on each node",
-			Destination: &scale,
+			Destination: &options.Scale,
 		},
 		cli.StringFlag{
 			Name:        "nodes-file",
 			Usage:       "file containing node hostnames and ids of the form \"ID,HOSTNAME\n\" on each line",
-			Destination: &nodesFile,
+			Destination: &options.NodesFile,
+		},
+		cli.StringFlag{
+			Name:        "git-branch",
+			Value:       "master",
+			Usage:       "what branch to use in deployment",
+			Destination: &options.GitBranch,
+		},
+		cli.StringFlag{
+			Name:        "app-path",
+			Value:       "~/app",
+			Usage:       "where the app should be stored on a node during deployment",
+			Destination: &options.AppPath,
+		},
+		cli.StringFlag{
+			Name:        "prometheus-sd-path",
+			Usage:       "if present, plcli will generate sd.json for prometheus and write to supplied path",
+			Destination: &options.PrometheusSDPath,
+		},
+		cli.BoolFlag{
+			Name:        "node-exporter",
+			Usage:       "if set, node-exporter will be installed and launched on port 2100",
+			Destination: &options.NodeExporter,
+		},
+		cli.BoolFlag{
+			Name:        "shuffle-nodes",
+			Usage:       "if set, nodes form PL api will be shuffled prior to deployment",
+			Destination: &options.ShuffleNodes,
+		},
+		cli.BoolFlag{
+			Name:        "skip-write-hosts-file",
+			Usage:       "if set, no file called hosts_deployment.txt will be written to .",
+			Destination: &options.SkipWriteHostsFile,
 		},
 	}
 
@@ -92,18 +118,18 @@ func main() {
 			UsageText: "plcli connect [node]",
 			Action: func(c *cli.Context) error {
 				node := c.Args().Get(0)
-				return commands.ConnectOverSSH(slice, node)
+				return commands.ConnectOverSSH(options.Slice, node)
 			},
 		},
 		{
 			Name:      "execute",
 			Aliases:   []string{"e"},
 			Usage:     "Execute a command on a PlanetLab node",
-			UsageText: "plcli execute [node] [command]",
+			UsageText: "plcli execute [command] [HOSTNAME|all|HOSTNAME1,HOSTNAME2..]",
 			Action: func(c *cli.Context) error {
-				node := c.Args().Get(0)
+				hostname := c.Args().Get(0)
 				cmd := c.Args().Get(1)
-				return commands.ExecCmdOnNode(slice, node, cmd, true)
+				return commands.ExecCmdOnNode(options.Slice, hostname, cmd, true)
 			},
 		},
 		{
@@ -115,7 +141,7 @@ func main() {
 				node := c.Args().Get(0)
 				src := c.Args().Get(1)
 				target := c.Args().Get(2)
-				return commands.Transfer(slice, node, src, target)
+				return commands.Transfer(options.Slice, node, src, target)
 			},
 		},
 		{
@@ -123,7 +149,7 @@ func main() {
 			Usage:     "Lists details for the current slice",
 			UsageText: "plcli slice-details",
 			Action: func(c *cli.Context) error {
-				return commands.GetDetailsForSlice(slice)
+				return commands.GetDetailsForSlice(options.Slice)
 			},
 		},
 		{
@@ -131,7 +157,7 @@ func main() {
 			Usage:     "Lists all nodes attached to the current slice",
 			UsageText: "plcli list-nodes",
 			Action: func(c *cli.Context) error {
-				return commands.GetNodesForSlice(slice)
+				return commands.GetNodesForSlice(options.Slice)
 			},
 		},
 		{
@@ -139,7 +165,7 @@ func main() {
 			Usage:     "Performs a health check of all nodes attached to the slice and outputs healthy nodes",
 			UsageText: "plcli [--remove-faulty] health-check",
 			Action: func(c *cli.Context) error {
-				commands.HealthCheck(slice, removeFaulty)
+				commands.HealthCheck(options.Slice, options.RemoveFaulty)
 				return nil
 			},
 		},
@@ -148,7 +174,7 @@ func main() {
 			Usage:     "Performs a health check of all nodes in the system and outputs hostnames and ids to an output file",
 			UsageText: "plcli [--attach-to-slice] discover-healthy",
 			Action: func(c *cli.Context) error {
-				return commands.DiscoverHealthyNodes(slice, attachToSlice)
+				return commands.DiscoverHealthyNodes(options.Slice, options.AttachToSlice)
 			},
 		},
 		{
@@ -157,7 +183,7 @@ func main() {
 			UsageText: "plcli deploy GIT_URL",
 			Action: func(c *cli.Context) error {
 				gitURL := c.Args().Get(0)
-				return commands.Deploy(slice, nodeCount, gitURL, skipHealthcheck, scale)
+				return commands.Deploy(gitURL, options)
 			},
 		},
 		{
@@ -173,10 +199,10 @@ func main() {
 				var hostnames []string
 
 				if len(hostnamesString) == 0 {
-					log.Fatal("No hostnames found. Run as provision PATH_TO_SCRIPT HOSTNAME|HOSTNAME1,HOSTNAME2..")
+					log.Fatal("No hostnames found. Run as provision PATH_TO_SCRIPT HOSTNAME|all|HOSTNAME1,HOSTNAME2..")
 				} else if hostnamesString == "all" {
-					log.Printf("Finding all nodes attached to slice %s", slice)
-					nodes, _ := pl.GetNodesForSlice(slice)
+					log.Printf("Finding all nodes attached to slice %s", options.Slice)
+					nodes, _ := pl.GetNodesForSlice(options.Slice)
 					for _, n := range nodes {
 						hostnames = append(hostnames, n.HostName)
 					}
@@ -184,7 +210,7 @@ func main() {
 					hostnames = strings.Split(hostnamesString, ",")
 				}
 
-				return commands.Provision(slice, provisionScriptPath, hostnames)
+				return commands.Provision(options.Slice, provisionScriptPath, hostnames)
 			},
 		},
 		{
@@ -198,14 +224,14 @@ func main() {
 				if len(hostnamesString) == 0 {
 					log.Fatal("No hostnames found. Run as cleanup all|HOSTNAME|HOSTNAME1,HOSTNAME2..")
 				} else if hostnamesString == "all" {
-					nodes, _ := pl.GetNodesForSlice(slice)
+					nodes, _ := pl.GetNodesForSlice(options.Slice)
 					for _, n := range nodes {
 						hostnames = append(hostnames, n.HostName)
 					}
 				} else {
 					hostnames = strings.Split(hostnamesString, ",")
 				}
-				return commands.Cleanup(slice, hostnames)
+				return commands.Cleanup(options.Slice, hostnames)
 			},
 		},
 	}

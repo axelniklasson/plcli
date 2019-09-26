@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"plcli/lib"
+	"github.com/axelniklasson/plcli/lib"
 
 	"github.com/go-ini/ini"
 	"github.com/mitchellh/go-homedir"

@@ -30,7 +30,8 @@ func Provision(sliceName string, scriptPath string, hostnames []string) error {
 			}
 
 			// run provision script on node
-			err = ExecCmdOnNode(sliceName, hostname, "cd; chmod +x provision.sh; sudo sh provision.sh", true)
+			// TODO figure out if sudo should be used to run sh provision.sh or not..
+			err = ExecCmdOnNode(sliceName, hostname, "cd; chmod +x provision.sh; sh provision.sh", true)
 			if err != nil {
 				log.Printf("Could not run provision script on node %s. Error: %v", hostname, err)
 				return

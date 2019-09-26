@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"plcli/lib/pl"
+	"github.com/axelniklasson/plcli/lib/pl"
 	"strconv"
 	"strings"
 )

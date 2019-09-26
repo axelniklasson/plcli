@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"plcli/lib/util"
+	"github.com/axelniklasson/plcli/lib/util"
 
 	"golang.org/x/crypto/ssh"
 )

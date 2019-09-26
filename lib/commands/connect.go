@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"plcli/lib/util"
+	"github.com/axelniklasson/plcli/lib/util"
 	"syscall"
 )
 

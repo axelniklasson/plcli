@@ -3,8 +3,8 @@ package pl
 import (
 	"fmt"
 	"log"
-	"plcli/lib"
-	"plcli/lib/util"
+	"github.com/axelniklasson/plcli/lib"
+	"github.com/axelniklasson/plcli/lib/util"
 	"time"
 )
 

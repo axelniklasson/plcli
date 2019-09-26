@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"plcli/lib/util"
+	"time"
+
+	"github.com/axelniklasson/plcli/lib/util"
 
 	scp "github.com/bramvdbogaerde/go-scp"
 )
@@ -12,7 +14,7 @@ import (
 // Transfer copies a local file to a remote PlanetLab node
 func Transfer(slice string, hostname string, srcBlob string, targetPath string) error {
 	clientConfig := util.GetClientConfig(slice)
-	client := scp.NewClient(fmt.Sprintf("%s:22", hostname), clientConfig)
+	client := scp.NewClientWithTimeout(fmt.Sprintf("%s:22", hostname), clientConfig, time.Minute*10)
 
 	// Connect to the remote server
 	err := client.Connect()

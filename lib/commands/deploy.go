@@ -1,17 +1,21 @@
 package commands
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"net"
 	"os"
 	"os/exec"
-	"plcli/lib"
-	"plcli/lib/pl"
 	"strings"
 	"time"
+
+	"github.com/axelniklasson/plcli/lib"
+	"github.com/axelniklasson/plcli/lib/pl"
+	"github.com/axelniklasson/plcli/lib/util"
 
 	"gopkg.in/yaml.v2"
 )
@@ -33,12 +37,12 @@ type jobResult struct {
 }
 
 // checks that there is a valid .plcli.yml file in the repo at gitURL and parses it
-func parseYML(gitURL string) *plcliYmlFile {
+func parseYML(gitURL string, gitBranch string) *plcliYmlFile {
 	if !strings.HasSuffix(gitURL, ".git") {
 		log.Fatal(errors.New("Please provide a valid git url"))
 	}
 
-	cmd := fmt.Sprintf("rm -rf ./tmp && git clone %s ./tmp", gitURL)
+	cmd := fmt.Sprintf("rm -rf ./tmp && git clone %s ./tmp && cd ./tmp && git checkout %s", gitURL, gitBranch)
 	_, err := exec.Command("sh", "-c", cmd).Output()
 	if err != nil {
 		log.Fatal(err)
@@ -67,16 +71,16 @@ func parseYML(gitURL string) *plcliYmlFile {
 }
 
 // bootstraps a node prior to application launch
-func bootstrap(sliceName string, node pl.Node, gitURL string, cmds []string) error {
+func bootstrap(node pl.Node, gitURL string, cmds []string, options *util.Options) error {
 	log.Printf("Bootstrapping %s", node.HostName)
 
 	cmdsToRun := []string{
 		"kill -9 -1",
-		"cd && rm -rf * && mkdir logs",
-		fmt.Sprintf("cd && git clone %s app", gitURL),
+		fmt.Sprintf("cd && rm -rf logs && rm -rf %s && mkdir logs", options.AppPath),
+		fmt.Sprintf("cd && git clone %s %s", gitURL, options.AppPath),
 	}
 
-	s := "cd ~/app"
+	s := fmt.Sprintf("cd %s && git checkout %s", options.AppPath, options.GitBranch)
 	for _, cmd := range cmds {
 		s += fmt.Sprintf(" && %s", cmd)
 	}
@@ -92,17 +96,34 @@ func bootstrap(sliceName string, node pl.Node, gitURL string, cmds []string) err
 	}
 
 	// execute all commands chained as one
-	err := ExecCmdOnNode(sliceName, node.HostName, cmdString, false)
-	return err
+	err := ExecCmdOnNode(options.Slice, node.HostName, cmdString, false)
+	if err != nil {
+		return nil
+	}
+
+	if options.NodeExporter {
+		err := Transfer(options.Slice, node.HostName, fmt.Sprintf("%s/scripts/node_exporter.sh", lib.BasePath), "~/node_exporter.sh")
+		if err != nil {
+			return err
+		}
+
+		log.Println("Launching node_exporter")
+		ExecCmdOnNode(options.Slice, node.HostName, "cd ~; pkill node_exporter; chmod +x node_exporter.sh; nohup sh node_exporter.sh > ~/logs/node_exporter.log 2>&1 &", false)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // launches an application on a given node
-func launch(sliceName string, node pl.Node, scriptString string, instanceID int) error {
+func launch(node pl.Node, scriptString string, instanceID int, options *util.Options) error {
 	scriptString = fmt.Sprintf("export PLCLI_INSTANCE_ID=%d; ", instanceID) + scriptString
 
 	cmdsToRun := []string{
-		fmt.Sprintf("cd ~/app && echo '%s' > start_instance_%d.sh && chmod +x start_instance_%d.sh", scriptString, instanceID, instanceID),
-		fmt.Sprintf("cd ~/app; nohup sh start_instance_%d.sh > ~/logs/instance_%d.log 2>&1 &", instanceID, instanceID),
+		fmt.Sprintf("cd %s && echo '%s' > start_instance_%d.sh && chmod +x start_instance_%d.sh", options.AppPath, scriptString, instanceID, instanceID),
+		fmt.Sprintf("cd %s; nohup sh start_instance_%d.sh > ~/logs/instance_%d.log 2>&1 &", options.AppPath, instanceID, instanceID),
 	}
 
 	cmdString := ""
@@ -114,33 +135,34 @@ func launch(sliceName string, node pl.Node, scriptString string, instanceID int)
 		}
 	}
 
-	err := ExecCmdOnNode(sliceName, node.HostName, cmdString, false)
+	err := ExecCmdOnNode(options.Slice, node.HostName, cmdString, false)
 	return err
 
 }
 
 // worker that takes care of bootstrapping a node prior to app launch
-func bootstrapWorker(id int, jobs <-chan pl.Node, results chan<- jobResult, sliceName string, gitURL string, cmds []string) {
+func bootstrapWorker(id int, jobs <-chan pl.Node, results chan<- jobResult, gitURL string, cmds []string, options *util.Options) {
 	for node := range jobs {
 		log.Printf("Worker %d bootstrapping node %s", id, node.HostName)
-		bootstrapError := bootstrap(sliceName, node, gitURL, cmds)
+		bootstrapError := bootstrap(node, gitURL, cmds, options)
 		// write result of job back to main thread
 		results <- jobResult{node, bootstrapError}
 	}
 }
 
 // worker that takes care of launching app on a node
-func launchWorker(id int, jobs <-chan job, results chan<- jobResult, sliceName string, scriptString string) {
+func launchWorker(id int, jobs <-chan job, results chan<- jobResult, scriptString string, options *util.Options) {
 	for job := range jobs {
 		log.Printf("Worker %d launching app instance %d on node %s", id, job.ID, job.Node.HostName)
-		launchError := launch(sliceName, job.Node, scriptString, job.ID)
+		launchError := launch(job.Node, scriptString, job.ID, options)
 		// write result of job back to main thread
 		results <- jobResult{job.Node, launchError}
 	}
 }
 
 // bootstrap nodes concurrently using workers
-func bootstrapNodes(sliceName string, nodes []pl.Node, gitURL string, cmds []string) error {
+// func bootstrapNodes(sliceName string, nodes []pl.Node, gitURL string, gitBranch string, cmds []string) error {
+func bootstrapNodes(nodes []pl.Node, gitURL string, cmds []string, options *util.Options) error {
 	jobs := make(chan pl.Node, len(nodes))
 	results := make(chan jobResult, len(nodes))
 
@@ -151,7 +173,7 @@ func bootstrapNodes(sliceName string, nodes []pl.Node, gitURL string, cmds []str
 	}
 	i := 0
 	for i < workerCount {
-		go bootstrapWorker(i, jobs, results, sliceName, gitURL, cmds)
+		go bootstrapWorker(i, jobs, results, gitURL, cmds, options)
 		i++
 	}
 
@@ -174,8 +196,8 @@ func bootstrapNodes(sliceName string, nodes []pl.Node, gitURL string, cmds []str
 }
 
 // launch nodes concurrently using workers
-func launchNodes(sliceName string, nodes []pl.Node, env map[string]string, cmds []string, scale int) error {
-	instanceCount := len(nodes) * scale
+func launchNodes(nodes []pl.Node, env map[string]string, cmds []string, options *util.Options) error {
+	instanceCount := len(nodes) * options.Scale
 	scriptString := ""
 	for k, v := range env {
 		scriptString += fmt.Sprintf("export %s=%s; ", k, v)
@@ -193,19 +215,19 @@ func launchNodes(sliceName string, nodes []pl.Node, env map[string]string, cmds 
 		workerCount = len(nodes)
 	}
 	for i := 0; i < workerCount; i++ {
-		go launchWorker(i, jobs, results, sliceName, scriptString)
+		go launchWorker(i, jobs, results, scriptString, options)
 	}
 
 	// create jobs
 	jobSlice := []job{}
-	for _, n := range nodes {
-		for i := 0; i < scale; i++ {
+	for i, n := range nodes {
+		for j := i * options.Scale; j < i*options.Scale+options.Scale; j++ {
 			jobSlice = append(jobSlice, job{Node: n, ID: i})
 		}
 	}
 
 	// shuffle jobs
-	log.Print("Shuffling nodes")
+	log.Print("Shuffling jobs")
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(jobSlice), func(i, j int) { jobSlice[i], jobSlice[j] = jobSlice[j], jobSlice[i] })
 
@@ -229,37 +251,84 @@ func launchNodes(sliceName string, nodes []pl.Node, env map[string]string, cmds 
 
 }
 
-// Deploy performs a PlanetLab deployment of app at gitUrl on nodeCount nodes using slice sliceName
-func Deploy(sliceName string, nodeCount int, gitURL string, skipHealthcheck bool, scale int) error {
-	start := time.Now()
-	log.Printf("Initiating deployment of %d instances of app %s to %d nodes using slice %s ", nodeCount*scale, gitURL, nodeCount, sliceName)
+func transferHostFile(nodes []pl.Node, options *util.Options) error {
+	buf := bytes.Buffer{}
 
-	conf := parseYML(gitURL)
+	for i, n := range nodes {
+		for j := i * options.Scale; j < i*options.Scale+options.Scale; j++ {
+			ip, err := net.LookupIP(n.HostName)
+			if err != nil {
+				return err
+			}
+
+			ipString := ""
+			for idx, x := range ip {
+				if idx < len(ip)-1 {
+					ipString += fmt.Sprintf("%s.", x)
+				} else {
+					ipString += fmt.Sprintf("%s", x)
+				}
+			}
+
+			if i == len(nodes)-1 && j == i*options.Scale+options.Scale-1 {
+				buf.WriteString(fmt.Sprintf("%d,%s,%s", j, n.HostName, ipString))
+			} else {
+				buf.WriteString(fmt.Sprintf("%d,%s,%s\n", j, n.HostName, ipString))
+			}
+		}
+	}
+
+	// transfer hosts file to all nodes
+	for _, n := range nodes {
+		err := ExecCmdOnNode(options.Slice, n.HostName, fmt.Sprintf("echo '%s' >> %s/hosts.txt", buf.String(), options.AppPath), true)
+		if err != nil {
+			return err
+		}
+	}
+
+	if !options.SkipWriteHostsFile {
+		f, _ := os.Create("./hosts_deployment.txt")
+		defer f.Close()
+
+		f.WriteString(buf.String())
+	}
+
+	return nil
+}
+
+// Deploy performs a PlanetLab deployment of app at gitUrl on nodeCount nodes using slice sliceName
+func Deploy(gitURL string, options *util.Options) error {
+	start := time.Now()
+	log.Printf("Initiating deployment of %d instances of app %s to %d nodes using slice %s ", options.NodeCount*options.Scale, gitURL, options.NodeCount, options.Slice)
+
+	conf := parseYML(gitURL, options.GitBranch)
 	var nodes []pl.Node
 	var err error
 
 	// possible healthcheck of nodes
-	if !skipHealthcheck {
-		nodes = HealthCheck(sliceName, false)
+	if !options.SkipHealthCheck {
+		nodes = HealthCheck(options.Slice, false)
 	} else {
 		log.Printf("Skipping healthcheck of nodes")
-		nodes, err = pl.GetNodesForSlice(sliceName)
+		nodes, err = pl.GetNodesForSlice(options.Slice)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	if len(nodes) < nodeCount {
-		log.Fatal(fmt.Errorf("Could not find enough nodes.. Found %d/%d. Run health check to learn more", len(nodes), nodeCount))
+	if len(nodes) < options.NodeCount {
+		log.Fatal(fmt.Errorf("Could not find enough nodes.. Found %d/%d. Run health check to learn more", len(nodes), options.NodeCount))
 	}
 
 	// shuffle nodes
-	log.Print("Shuffling nodes")
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
+	if options.ShuffleNodes {
+		log.Print("Shuffling nodes")
+		rand.Seed(time.Now().UnixNano())
+		rand.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
+	}
 
 	// pretty-print nodes that will be used for deployment
-	nodes = nodes[0:nodeCount]
+	nodes = nodes[0:options.NodeCount]
 	var hostnames string
 	for idx, n := range nodes {
 		hostnames += n.HostName
@@ -272,19 +341,68 @@ func Deploy(sliceName string, nodeCount int, gitURL string, skipHealthcheck bool
 	log.Printf("Nodes that will be used for deployment: %s\n", hostnames)
 
 	// bootstrap all nodes
-	err = bootstrapNodes(sliceName, nodes, gitURL, conf.BootstrapCmds)
+	// err = bootstrapNodes(sliceName, nodes, gitURL, gitBranch, conf.BootstrapCmds)
+	err = bootstrapNodes(nodes, gitURL, conf.BootstrapCmds, options)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// transfer hosts file to app repo
+	err = transferHostFile(nodes, options)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// launch app on all nodes
-	err = launchNodes(sliceName, nodes, conf.Env, conf.LaunchCmds, scale)
+	err = launchNodes(nodes, conf.Env, conf.LaunchCmds, options)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	if options.PrometheusSDPath != "" {
+		writePromSD(nodes, options)
+	}
+
 	log.Println("Deployment finished!")
 	elapsed := time.Since(start)
-	log.Printf("Deployment of %d app instances to %d nodes took %s", nodeCount*scale, nodeCount, elapsed)
+	log.Printf("Deployment of %d app instances to %d nodes took %s", options.NodeCount*options.Scale, options.NodeCount, elapsed)
 	return nil
+}
+
+// writePromSD builds and writes an sd file for prometheus to the given path
+func writePromSD(nodes []pl.Node, options *util.Options) {
+	// remove file if exists
+	os.Remove(options.PrometheusSDPath)
+
+	// create file
+	f, err := os.Create(options.PrometheusSDPath)
+	if err != nil {
+		log.Fatalf("Could not create prom sd file: error: %v", err)
+	}
+	defer f.Close()
+
+	nodeExporterTargets := ""
+	ssurbTargets := ""
+	for i, n := range nodes {
+		for j := i * options.Scale; j < i*options.Scale+options.Scale; j++ {
+			if i == len(nodes)-1 && j == i*options.Scale+options.Scale-1 {
+				ssurbTargets += fmt.Sprintf("\"%s:%d\"", n.HostName, 2112+j)
+			} else {
+				ssurbTargets += fmt.Sprintf("\"%s:%d\",", n.HostName, 2112+j)
+			}
+		}
+		if i == len(nodes)-1 {
+			nodeExporterTargets += fmt.Sprintf("\"%s:2100\"", n.HostName)
+		} else {
+			nodeExporterTargets += fmt.Sprintf("\"%s:2100\",", n.HostName)
+		}
+	}
+
+	sdString := fmt.Sprintf("[{\"targets\": [%s],\"labels\": { \"env\": \"planetlab\", \"job\": \"self-stabilizing-urb\" }},", ssurbTargets)
+	sdString += fmt.Sprintf("{\"targets\": [%s],\"labels\": { \"env\": \"planetlab\", \"job\": \"node_exporter\" }}]", nodeExporterTargets)
+
+	// write to file
+	f.WriteString(sdString)
+
+	log.Printf("Wrote sd.json to %s", options.PrometheusSDPath)
 }
