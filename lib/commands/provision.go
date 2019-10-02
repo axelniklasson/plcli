@@ -4,10 +4,12 @@ import (
 	"log"
 	"os"
 	"sync"
+
+	"github.com/axelniklasson/plcli/lib/util"
 )
 
 // Provision provisions a set of nodes using a provided script
-func Provision(sliceName string, scriptPath string, hostnames []string) error {
+func Provision(scriptPath string, hostnames []string, options *util.Options) error {
 	log.Printf("Initiaing provisioning of %d node(s)", len(hostnames))
 
 	if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
@@ -23,21 +25,25 @@ func Provision(sliceName string, scriptPath string, hostnames []string) error {
 			defer wg.Done()
 
 			// transfer provision script to node
-			err := Transfer(sliceName, hostname, scriptPath, "~/provision.sh")
+			err := Transfer(options.Slice, hostname, scriptPath, "~/provision.sh")
 			if err != nil {
 				log.Printf("Could not transfer provision script to node %s. Error: %v", hostname, err)
 				return
 			}
 
 			// run provision script on node
-			err = ExecCmdOnNode(sliceName, hostname, "cd; chmod +x provision.sh; sh provision.sh", true)
+			if options.Sudo {
+				err = ExecCmdOnNode(options.Slice, hostname, "cd; chmod +x provision.sh; sudo sh provision.sh", true)
+			} else {
+				err = ExecCmdOnNode(options.Slice, hostname, "cd; chmod +x provision.sh; sh provision.sh", true)
+			}
 			if err != nil {
 				log.Printf("Could not run provision script on node %s. Error: %v", hostname, err)
 				return
 			}
 
 			// cleanup, remove provision script from node
-			err = ExecCmdOnNode(sliceName, hostname, "cd; rm provision.sh", false)
+			err = ExecCmdOnNode(options.Slice, hostname, "cd; rm provision.sh", false)
 
 			log.Printf("Provision of node %s done!", hostname)
 		}(idx, n)

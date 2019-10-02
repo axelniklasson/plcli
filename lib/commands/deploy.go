@@ -123,7 +123,12 @@ func launch(node pl.Node, scriptString string, instanceID int, options *util.Opt
 
 	cmdsToRun := []string{
 		fmt.Sprintf("cd %s && echo '%s' > start_instance_%d.sh && chmod +x start_instance_%d.sh", options.AppPath, scriptString, instanceID, instanceID),
-		fmt.Sprintf("cd %s; nohup sh start_instance_%d.sh > ~/logs/instance_%d.log 2>&1 &", options.AppPath, instanceID, instanceID),
+	}
+
+	if options.Sudo {
+		cmdsToRun = append(cmdsToRun, fmt.Sprintf("cd %s; sudo nohup sh start_instance_%d.sh > ~/logs/instance_%d.log 2>&1 &", options.AppPath, instanceID, instanceID))
+	} else {
+		cmdsToRun = append(cmdsToRun, fmt.Sprintf("cd %s; nohup sh start_instance_%d.sh > ~/logs/instance_%d.log 2>&1 &", options.AppPath, instanceID, instanceID))
 	}
 
 	cmdString := ""
@@ -202,6 +207,19 @@ func launchNodes(nodes []pl.Node, env map[string]string, cmds []string, options 
 	for k, v := range env {
 		scriptString += fmt.Sprintf("export %s=%s; ", k, v)
 	}
+
+	if options.EnvVars != "" {
+		vars := strings.Split(options.EnvVars, ",")
+		for _, v := range vars {
+			parts := strings.Split(v, "=")
+			if len(parts) != 2 {
+				log.Fatal("Badly formatted env string. Should be VAR1=VAL1,VAR2=VAL2,etc")
+			}
+
+			scriptString += fmt.Sprintf("export %s=%s; ", parts[0], parts[1])
+		}
+	}
+
 	for _, cmd := range cmds {
 		scriptString += fmt.Sprintf("%s; ", cmd)
 	}
@@ -296,6 +314,28 @@ func transferHostFile(nodes []pl.Node, options *util.Options) error {
 	return nil
 }
 
+func removeBlackListed(nodes []pl.Node, blacklistedHostnames []string) []pl.Node {
+	okNodes := []pl.Node{}
+
+	for _, node := range nodes {
+		ok := true
+		for _, blacklisted := range blacklistedHostnames {
+			if node.HostName == blacklisted {
+				ok = false
+				break
+			}
+		}
+
+		if ok {
+			okNodes = append(okNodes, node)
+		}
+	}
+
+	log.Printf("Removed blacklisted nodes %v from deployment", blacklistedHostnames)
+
+	return okNodes
+}
+
 // Deploy performs a PlanetLab deployment of app at gitUrl on nodeCount nodes using slice sliceName
 func Deploy(gitURL string, options *util.Options) error {
 	start := time.Now()
@@ -314,6 +354,10 @@ func Deploy(gitURL string, options *util.Options) error {
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	if options.BlacklistedHostnames != "" {
+		nodes = removeBlackListed(nodes, strings.Split(options.BlacklistedHostnames, ","))
 	}
 
 	if len(nodes) < options.NodeCount {

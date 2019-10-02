@@ -3,10 +3,6 @@ package pl
 import (
 	"fmt"
 	"log"
-	"time"
-
-	"github.com/axelniklasson/plcli/lib"
-	"github.com/axelniklasson/plcli/lib/util"
 )
 
 // GetSlices queries the PL API and returns all slices matching sliceName
@@ -46,6 +42,23 @@ func GetNodeDetails(nodeID int) (Node, error) {
 	}
 
 	return nodes[0], nil
+}
+
+// GetNodesDetails returns details about given nodes
+func GetNodesDetails(nodeIDs []int) []Node {
+	log.Printf("Fetching details about nodes with IDs %v", nodeIDs)
+	client := GetClient()
+	args := make([]interface{}, 2)
+	args[0] = GetClientAuth()
+	args[1] = nodeIDs
+
+	nodes := []Node{}
+	err := client.Call("GetNodes", args, &nodes)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return nodes
 }
 
 // GetAllNodes returns all nodes in the system
@@ -89,48 +102,7 @@ func GetNodesForSlice(sliceName string) ([]Node, error) {
 	}
 
 	nodeIDs := slices[0].NodeIDs
-	detailedNodes := []Node{}
-
-	// setup channels to write jobs and get back jobresults
-	jobs := make(chan util.Job, len(nodeIDs))
-	results := make(chan util.JobResult, len(nodeIDs))
-
-	type funcArgs struct {
-		NodeID int
-	}
-	type jobResult struct {
-		Node Node
-	}
-
-	// construct jobs and write over channel
-	for _, nodeID := range nodeIDs {
-		args := funcArgs{nodeID}
-		workerFunc := func(i interface{}) (interface{}, error) {
-			time.Sleep(time.Second * 1)
-			args = i.(funcArgs)
-			node, err := GetNodeDetails(args.NodeID)
-			return jobResult{node}, err
-		}
-		jobs <- util.Job{Func: workerFunc, Args: args}
-	}
-	close(jobs)
-
-	workerCount := lib.PLApiConcurrentWorkers
-	if len(nodeIDs) < workerCount {
-		workerCount = len(nodeIDs)
-	}
-	// launch workers
-	for i := 0; i < workerCount; i++ {
-		go util.Worker(i, jobs, results)
-	}
-
-	// gather results
-	for j := 0; j < len(nodeIDs); j++ {
-		r := <-results
-		jobResult := r.Result.(jobResult)
-		detailedNodes = append(detailedNodes, jobResult.Node)
-		log.Printf("Job %d/%d finished!", len(detailedNodes), len(nodeIDs))
-	}
+	detailedNodes := GetNodesDetails(nodeIDs)
 
 	log.Printf("Finished fetching details of all %d nodes", len(detailedNodes))
 	return detailedNodes, nil

@@ -96,8 +96,23 @@ func main() {
 		},
 		cli.BoolFlag{
 			Name:        "skip-write-hosts-file",
-			Usage:       "if set, no file called hosts_deployment.txt will be written to .",
+			Usage:       "if set, no file called hosts_deployment.txt will be written to current directory",
 			Destination: &options.SkipWriteHostsFile,
+		},
+		cli.BoolFlag{
+			Name:        "sudo",
+			Usage:       "if set, everything will be run as sudo on hosts",
+			Destination: &options.Sudo,
+		},
+		cli.StringFlag{
+			Name:        "blacklist",
+			Usage:       "HOST1,HOST2,... string of hostnames to blacklist in the deployment",
+			Destination: &options.BlacklistedHostnames,
+		},
+		cli.StringFlag{
+			Name:        "env",
+			Usage:       "VAR1=VAL1,VAR2=VAL,... string of env vars to use in deployment",
+			Destination: &options.EnvVars,
 		},
 	}
 
@@ -132,7 +147,7 @@ func main() {
 				var hostnames []string
 
 				if len(hostnamesString) == 0 {
-					log.Fatal("No hostnames found. Run as provision PATH_TO_SCRIPT HOSTNAME|all|HOSTNAME1,HOSTNAME2..")
+					log.Fatal("No hostnames found. Run as execute [command] [HOSTNAME|all|HOSTNAME1,HOSTNAME2..]")
 				} else if hostnamesString == "all" {
 					log.Printf("Finding all nodes attached to slice %s", options.Slice)
 					nodes, _ := pl.GetNodesForSlice(options.Slice)
@@ -203,7 +218,7 @@ func main() {
 		{
 			Name:      "provision",
 			Usage:     "Provisions node(s) using a provided script",
-			UsageText: "plcli provision PATH_TO_SCRIPT HOSTNAME|HOSTNAME1,HOSTNAME1",
+			UsageText: "plcli provision PATH_TO_SCRIPT HOSTNAME|all|HOSTNAME1,HOSTNAME1",
 			Action: func(c *cli.Context) error {
 				if len(c.Args()) != 2 {
 					log.Fatal("Run as provision PATH_TO_SCRIPT HOSTNAME|HOSTNAME1,HOSTNAME1")
@@ -224,7 +239,7 @@ func main() {
 					hostnames = strings.Split(hostnamesString, ",")
 				}
 
-				return commands.Provision(options.Slice, provisionScriptPath, hostnames)
+				return commands.Provision(provisionScriptPath, hostnames, options)
 			},
 		},
 		{
