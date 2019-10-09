@@ -31,88 +31,20 @@ func main() {
 			Destination: &options.Slice,
 		},
 		cli.IntFlag{
-			Name:        "node-count",
-			Usage:       "number of nodes to deploy to",
-			Destination: &options.NodeCount,
-		},
-		cli.BoolFlag{
-			Name:        "skip-healthcheck",
-			Usage:       "skip health check when deploying",
-			Destination: &options.SkipHealthCheck,
-		},
-		cli.BoolFlag{
-			Name:        "remove-faulty",
-			Usage:       "remove faulty nodes from slice during healthcheck",
-			Destination: &options.RemoveFaulty,
-		},
-		cli.BoolFlag{
-			Name:        "attach-to-slice",
-			Usage:       "attach all healthy nodes to slice",
-			Destination: &options.AttachToSlice,
-		},
-		cli.IntFlag{
 			Name:        "workers",
 			Value:       lib.WorkerPoolSize,
 			Usage:       "number of workers to use",
 			Destination: &lib.WorkerPoolSize,
 		},
-		cli.IntFlag{
-			Name:        "scale",
-			Value:       1,
-			Usage:       "number of instances of app to launch on each node",
-			Destination: &options.Scale,
-		},
 		cli.StringFlag{
 			Name:        "nodes-file",
-			Usage:       "file containing node hostnames and ids of the form \"ID,HOSTNAME\n\" on each line",
+			Usage:       "file containing node hostnames and ids of the form \"ID,HOSTNAME\" on each line",
 			Destination: &options.NodesFile,
-		},
-		cli.StringFlag{
-			Name:        "git-branch",
-			Value:       "master",
-			Usage:       "what branch to use in deployment",
-			Destination: &options.GitBranch,
-		},
-		cli.StringFlag{
-			Name:        "app-path",
-			Value:       "~/app",
-			Usage:       "where the app should be stored on a node during deployment",
-			Destination: &options.AppPath,
-		},
-		cli.StringFlag{
-			Name:        "prometheus-sd-path",
-			Usage:       "if present, plcli will generate sd.json for prometheus and write to supplied path",
-			Destination: &options.PrometheusSDPath,
-		},
-		cli.BoolFlag{
-			Name:        "node-exporter",
-			Usage:       "if set, node-exporter will be installed and launched on port 2100",
-			Destination: &options.NodeExporter,
-		},
-		cli.BoolFlag{
-			Name:        "shuffle-nodes",
-			Usage:       "if set, nodes form PL api will be shuffled prior to deployment",
-			Destination: &options.ShuffleNodes,
-		},
-		cli.BoolFlag{
-			Name:        "skip-write-hosts-file",
-			Usage:       "if set, no file called hosts_deployment.txt will be written to current directory",
-			Destination: &options.SkipWriteHostsFile,
 		},
 		cli.BoolFlag{
 			Name:        "sudo",
-			Usage:       "if set, everything will be run as sudo on hosts",
+			Usage:       "if set, everything will be run as sudo on nodes",
 			Destination: &options.Sudo,
-		},
-		cli.StringFlag{
-			Name:        "blacklist",
-			Usage:       "HOST1,HOST2,... string of hostnames to blacklist in the deployment",
-			Destination: &options.BlacklistedHostnames,
-		},
-		cli.StringFlag{
-			Name:        "env",
-			Usage:       "VAR1=VAL1,VAR2=VAL,... string of env vars to use in deployment",
-			Destination: &options.EnvVars,
 		},
 	}
 
@@ -193,6 +125,18 @@ func main() {
 			Name:      "health-check",
 			Usage:     "Performs a health check of all nodes attached to the slice and outputs healthy nodes",
 			UsageText: "plcli [--remove-faulty] health-check",
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:        "remove-faulty",
+					Usage:       "remove faulty nodes from slice during healthcheck",
+					Destination: &options.RemoveFaulty,
+				},
+				cli.BoolFlag{
+					Name:        "attach-to-slice",
+					Usage:       "attach all healthy nodes to slice",
+					Destination: &options.AttachToSlice,
+				},
+			},
 			Action: func(c *cli.Context) error {
 				commands.HealthCheck(options.Slice, options.RemoveFaulty)
 				return nil
@@ -210,6 +154,66 @@ func main() {
 			Name:      "deploy",
 			Usage:     "Deploys an application on PlanetLab nodes",
 			UsageText: "plcli deploy GIT_URL",
+			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:        "node-count",
+					Usage:       "number of nodes to deploy to",
+					Destination: &options.NodeCount,
+				},
+				cli.BoolFlag{
+					Name:        "skip-healthcheck",
+					Usage:       "skip health check when deploying",
+					Destination: &options.SkipHealthCheck,
+				},
+				cli.IntFlag{
+					Name:        "scale",
+					Value:       1,
+					Usage:       "number of instances of app to launch on each node",
+					Destination: &options.Scale,
+				},
+				cli.StringFlag{
+					Name:        "git-branch",
+					Value:       "master",
+					Usage:       "what branch to use in deployment",
+					Destination: &options.GitBranch,
+				},
+				cli.StringFlag{
+					Name:        "app-path",
+					Value:       "~/app",
+					Usage:       "where the app should be stored on a node during deployment",
+					Destination: &options.AppPath,
+				},
+				cli.StringFlag{
+					Name:        "prometheus-sd-path",
+					Usage:       "if present, plcli will generate sd.json for prometheus and write to supplied path",
+					Destination: &options.PrometheusSDPath,
+				},
+				cli.BoolFlag{
+					Name:        "node-exporter",
+					Usage:       "if set, node-exporter will be installed and launched on port 2100",
+					Destination: &options.NodeExporter,
+				},
+				cli.BoolFlag{
+					Name:        "shuffle-nodes",
+					Usage:       "if set, nodes form PL api will be shuffled prior to deployment",
+					Destination: &options.ShuffleNodes,
+				},
+				cli.BoolFlag{
+					Name:        "skip-write-hosts-file",
+					Usage:       "if set, no file called hosts_deployment.txt will be written to current directory",
+					Destination: &options.SkipWriteHostsFile,
+				},
+				cli.StringFlag{
+					Name:        "blacklist",
+					Usage:       "HOST1,HOST2,... string of hostnames to blacklist in the deployment",
+					Destination: &options.BlacklistedHostnames,
+				},
+				cli.StringFlag{
+					Name:        "env",
+					Usage:       "VAR1=VAL1,VAR2=VAL2,... string of env vars to use in deployment",
+					Destination: &options.EnvVars,
+				},
+			},
 			Action: func(c *cli.Context) error {
 				gitURL := c.Args().Get(0)
 				return commands.Deploy(gitURL, options)
