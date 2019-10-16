@@ -2,6 +2,8 @@
 CLI for managing slices, deploying applications and various other tasks related to PlanetLab nodes.
 
 ## Installation
+### Get the latest release 
+Head over to the page for the [latest release](https://github.com/axelniklasson/plcli/releases/latest) and download the binary and get cracking!
 
 ### Build from source
 First, make sure that Go is installed and that Go binaries are available in your PATH:
@@ -18,6 +20,8 @@ go get -u github.com/axelniklasson/plcli
 You can now run `plcli` and start using the PlanetLab CLI!
 
 ## Usage
+Below is a dump from running `plcli` in the command line. More extensive documentation can be found in the [wiki](https://github.com/axelniklasson/plcli/wiki).
+
 ```
 NAME:
    plcli - CLI for PlanetLab
