@@ -2,3 +2,5 @@ plcli
 etc
 .DS_Store
 nodes.txt
+build.sh
+bin

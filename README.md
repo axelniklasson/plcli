@@ -2,6 +2,8 @@
 CLI for managing slices, deploying applications and various other tasks related to PlanetLab nodes.
 
 ## Installation
+
+### Build from source
 First, make sure that Go is installed and that Go binaries are available in your PATH:
 ```
 export PATH=$PATH:$GOPATH/bin
@@ -24,7 +26,7 @@ USAGE:
    plcli [global options] command [command options] [arguments...]
 
 VERSION:
-   0.1
+   1.0
 
 AUTHOR:
    Axel Niklasson <axel.niklasson@live.com>
@@ -45,13 +47,9 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --slice value       name of slice to use when connecting to PlanetLab (default: "chalmersple_2018_10_29")
-   --node-count value  number of nodes to deploy to (default: 0)
-   --skip-healthcheck  skip health check when deploying
-   --remove-faulty     remove faulty nodes from slice during healthcheck
-   --attach-to-slice   attach all healthy nodes to slice
    --workers value     number of workers to use (default: 20)
-   --scale value       number of instances of app to launch on each node (default: 1)
    --nodes-file value  file containing node hostnames and ids of the form "ID,HOSTNAME" on each line
-   --help, -h     show help
-   --version, -v  print the version
+   --sudo              if set, everything will be run as sudo on nodes
+   --help, -h          show help
+   --version, -v       print the version
 ```
