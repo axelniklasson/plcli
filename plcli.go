@@ -17,7 +17,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "plcli"
 	app.Usage = "CLI for PlanetLab"
-	app.Version = "1.0"
+	app.Version = "1.1"
 	app.Authors = []cli.Author{{Name: "Axel Niklasson", Email: "axel.r.niklasson@gmail.com"}}
 
 	conf := util.GetConf()
