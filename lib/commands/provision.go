@@ -25,7 +25,7 @@ func Provision(scriptPath string, hostnames []string, options *util.Options) err
 			defer wg.Done()
 
 			// transfer provision script to node
-			err := Transfer(options.Slice, hostname, scriptPath, "~/provision.sh")
+			err := Transfer(options.Slice, hostname, scriptPath, "provision.sh")
 			if err != nil {
 				log.Printf("Could not transfer provision script to node %s. Error: %v", hostname, err)
 				return
